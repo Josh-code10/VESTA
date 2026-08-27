@@ -18,6 +18,7 @@ import {
   Bookmark
 } from 'lucide-react';
 import { EvidenceNode, EpistemicTag } from '../../types/api';
+import { API_BASE_URL } from '../../services/api';
 import { EpistemicBadge } from '../../components/epistemic/EpistemicBadge';
 import { VisualizationRenderer } from '../../components/visualization/VisualizationRenderer';
 import { BusinessImplicationCard } from './BusinessImplicationCard';
@@ -141,7 +142,7 @@ export const ExecutiveInsightCard: React.FC<ExecutiveInsightCardProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={() => {
-              fetch('http://127.0.0.1:8000/api/v1/memory/create', {
+              fetch(`${API_BASE_URL}/memory/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

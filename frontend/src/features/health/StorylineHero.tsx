@@ -16,6 +16,7 @@ import {
   User
 } from 'lucide-react';
 import type { BusinessStoryline, ExecutiveHealthStatus } from '../../types/api';
+import { API_BASE_URL } from '../../services/api';
 
 interface StorylineHeroProps {
   storyline: BusinessStoryline;
@@ -147,7 +148,7 @@ export const StorylineHero: React.FC<StorylineHeroProps> = ({
         currentAudioUrlRef.current = null;
       }
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/voice/storyline', {
+      const res = await fetch(`${API_BASE_URL}/voice/storyline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

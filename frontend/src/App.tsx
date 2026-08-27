@@ -19,7 +19,7 @@ import { ExecutiveMemoryTimeline } from './features/memory/ExecutiveMemoryTimeli
 import { SinceLastBriefingBanner } from './features/health/SinceLastBriefingBanner';
 import { voiceService } from './services/ExecutiveVoiceService';
 import { InvestigationWorkspace } from './features/investigate/InvestigationWorkspace';
-import { getHealthDashboard, refreshDataSource, updateKPIConfig } from './services/api';
+import { getHealthDashboard, refreshDataSource, updateKPIConfig, API_BASE_URL } from './services/api';
 import type { HealthDashboardResponse, ActiveKPI, HealthIssue, EvidenceNode, ExecutiveMemory } from './types/api';
 
 export const App: React.FC = () => {
@@ -65,7 +65,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     // Fetch initial Executive Memories
-    fetch('http://127.0.0.1:8000/api/v1/memory/list')
+    fetch(`${API_BASE_URL}/memory/list`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) setExecutiveMemories(data);
