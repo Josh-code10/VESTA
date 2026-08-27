@@ -1,0 +1,299 @@
+:root, [data-theme="light"] {
+  /* White-First Executive Theme (Apple Health × Stripe × ThoughtSpot) */
+  --bg-app: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-secondary: #F8FAFC;
+  --bg-card-hover: #F1F5F9;
+  --bg-input: #F1F5F9;
+  
+  --border-subtle: #E2E8F0;
+  --border-active: #CBD5E1;
+  --border-accent: #6366F1;
+
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-dim: #94A3B8;
+
+  /* Semantic Health & Status */
+  --color-healthy: #059669;
+  --color-healthy-bg: #ECFDF5;
+  --color-healthy-border: #A7F3D0;
+
+  --color-warning: #D97706;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FDE68A;
+
+  --color-critical: #DC2626;
+  --color-critical-bg: #FEF2F2;
+  --color-critical-border: #FECACA;
+
+  /* Epistemic Badges */
+  --tag-fact: #059669;
+  --tag-fact-bg: #ECFDF5;
+  --tag-obs: #0284C7;
+  --tag-obs-bg: #F0F9FF;
+  --tag-inf: #7C3AED;
+  --tag-inf-bg: #F5F3FF;
+  --tag-hyp: #D97706;
+  --tag-hyp-bg: #FFFBEB;
+  --tag-unk: #DC2626;
+  --tag-unk-bg: #FEF2F2;
+
+  /* Brand Accents */
+  --brand-primary: #6366F1;
+  --brand-hover: #4F46E5;
+  --brand-light: #EEF2FF;
+  --brand-glow: rgba(99, 102, 241, 0.15);
+
+  /* Card Style & Shadows */
+  --radius-card: 20px;
+  --radius-inner: 12px;
+  --radius-sm: 6px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+}
+
+/* Optional Dark Theme */
+[data-theme="dark"] {
+  --bg-app: #0B0F17;
+  --bg-surface: #131B2A;
+  --bg-card: #1A2333;
+  --bg-card-secondary: #131B2A;
+  --bg-card-hover: #222E42;
+  --bg-input: #0F172A;
+  
+  --border-subtle: #243046;
+  --border-active: #3B4B68;
+  --border-accent: #6366F1;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+  --text-dim: #64748B;
+
+  --color-healthy: #10B981;
+  --color-healthy-bg: rgba(16, 185, 129, 0.12);
+  --color-healthy-border: rgba(16, 185, 129, 0.3);
+
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.12);
+  --color-warning-border: rgba(245, 158, 11, 0.3);
+
+  --color-critical: #EF4444;
+  --color-critical-bg: rgba(239, 68, 68, 0.12);
+  --color-critical-border: rgba(239, 68, 68, 0.3);
+
+  --tag-fact: #10B981;
+  --tag-fact-bg: rgba(16, 185, 129, 0.15);
+  --tag-obs: #0EA5E9;
+  --tag-obs-bg: rgba(14, 165, 233, 0.15);
+  --tag-inf: #8B5CF6;
+  --tag-inf-bg: rgba(139, 92, 246, 0.15);
+  --tag-hyp: #F59E0B;
+  --tag-hyp-bg: rgba(245, 158, 11, 0.15);
+  --tag-unk: #EF4444;
+  --tag-unk-bg: rgba(239, 68, 68, 0.15);
+
+  --brand-primary: #6366F1;
+  --brand-hover: #4F46E5;
+  --brand-light: #1E1B4B;
+  --brand-glow: rgba(99, 102, 241, 0.25);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.55);
+}
+
+/* Typography & Sizing */
+:root {
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Base Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  font-size: 14px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Number display rules */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Reusable Executive Card */
+.executive-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.executive-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-active);
+}
+
+/* Print Stylesheet */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 12pt;
+  }
+  .no-print, header, nav, button, .modal-backdrop {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .executive-report-container {
+    padding: 0 !important;
+    max-width: 100% !important;
+    background: #FFFFFF !important;
+    color: #111827 !important;
+  }
+}
+
+/* Vesta Live Reasoning & Thinking Stream Animations */
+@keyframes vesta-pulse-radar {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+@keyframes vesta-check-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes vesta-step-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes vesta-shimmer-text {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes vesta-card-glow {
+  0%, 100% {
+    box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.08), 0 2px 6px -1px rgba(99, 102, 241, 0.04);
+    border-color: rgba(99, 102, 241, 0.25);
+  }
+  50% {
+    box-shadow: 0 8px 30px -4px rgba(99, 102, 241, 0.16), 0 4px 12px -2px rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.45);
+  }
+}
+
+.vesta-thinking-card {
+  animation: vesta-card-glow 3s infinite ease-in-out;
+}
+
+.vesta-pulse-badge {
+  animation: vesta-pulse-radar 1.8s infinite ease-in-out;
+}
+
+.vesta-check-icon {
+  animation: vesta-check-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.vesta-step-item {
+  animation: vesta-step-reveal 0.3s ease forwards;
+}
+
+.vesta-shimmering-text {
+  background: linear-gradient(90deg, var(--text-primary) 0%, #6366F1 50%, var(--text-primary) 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: vesta-shimmer-text 2.5s linear infinite;
+}
+
+/* Vesta Voice Narration Equalizer Bars */
+@keyframes vesta-soundwave-1 {
+  0%, 100% { height: 4px; }
+  50% { height: 14px; }
+}
+@keyframes vesta-soundwave-2 {
+  0%, 100% { height: 8px; }
+  50% { height: 18px; }
+}
+@keyframes vesta-soundwave-3 {
+  0%, 100% { height: 5px; }
+  50% { height: 12px; }
+}
+@keyframes vesta-soundwave-4 {
+  0%, 100% { height: 10px; }
+  50% { height: 16px; }
+}
+
+

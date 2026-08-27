@@ -1,0 +1,60 @@
+[
+  {
+    "memory_id": "mem_lagos_returns_01",
+    "investigation_id": "inv_89a1f2",
+    "title": "Lagos Return Rate Governance & Quality Review",
+    "created_at": "2026-08-24T18:30:00Z",
+    "updated_at": "2026-08-24T21:45:00Z",
+    "business_driver": "Customer",
+    "trigger_issue_id": "iss_ret_01",
+    "status": "Monitoring",
+    "investigation": "Why is return rate increasing in Lagos?",
+    "finding": {
+      "facts": [
+        "Lagos return rate reached 7.2% in July",
+        "Home Appliances category accounted for 68.4% of total returned units"
+      ],
+      "observations": [
+        "Surulere Hub experienced elevated return volume following transit packaging shifts."
+      ],
+      "evidence_references": [
+        "art_inv_89a1f2"
+      ],
+      "confidence_level": "HIGH"
+    },
+    "management_decision": "Require mandatory cashier return-reason tagging at POS and pause inventory replenishment on top 3 returned appliance SKUs.",
+    "followup_question": "Did return rates in Lagos improve after supplier quality review?",
+    "restorable_state": {
+      "user_question": "Why is return rate increasing in Lagos?"
+    }
+  },
+  {
+    "memory_id": "mem_abuja_margin_02",
+    "investigation_id": "inv_44c9b1",
+    "title": "Abuja Commercial Gross Margin Restoration",
+    "created_at": "2026-08-23T14:15:00Z",
+    "updated_at": "2026-08-24T10:20:00Z",
+    "business_driver": "Finance",
+    "trigger_issue_id": "iss_margin_01",
+    "status": "Open",
+    "investigation": "Why did gross profit margin collapse in Abuja?",
+    "finding": {
+      "facts": [
+        "Gross profit margin dropped from 24.5% to 18.2% in Abuja",
+        "Promotional discount depth reached 19.4% average"
+      ],
+      "observations": [
+        "Uncontrolled store-level markdowns eroded unit profit realization."
+      ],
+      "evidence_references": [
+        "art_inv_44c9b1"
+      ],
+      "confidence_level": "HIGH"
+    },
+    "management_decision": "Enforce a 12% promotional discount depth ceiling and require VP approval for markdowns >15%.",
+    "followup_question": "Has gross margin recovered in Abuja following discount depth ceiling enforcement?",
+    "restorable_state": {
+      "user_question": "Why did gross profit margin collapse in Abuja?"
+    }
+  }
+]
