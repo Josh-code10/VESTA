@@ -11,8 +11,20 @@ class SessionDataManager:
     _dataframes: Dict[str, pd.DataFrame] = {}
     _data_dictionaries: Dict[str, DataDictionary] = {}
     _investigation_nodes: Dict[str, list[EvidenceNode]] = {}
+    _data_sources: Dict[str, str] = {}
     _kpi_weights: Dict[str, Dict[str, float]] = {}
     _kpi_targets: Dict[str, Dict[str, float]] = {}
+
+    @classmethod
+    def get_data_source(cls, workspace_id: str = "ws_default") -> Optional[str]:
+        return cls._data_sources.get(workspace_id)
+
+    @classmethod
+    def set_data_source(cls, workspace_id: str, source_url: Optional[str]):
+        if source_url:
+            cls._data_sources[workspace_id] = source_url
+        elif workspace_id in cls._data_sources:
+            del cls._data_sources[workspace_id]
 
     @classmethod
     def load_demo_fixture(cls, workspace_id: str = "ws_default") -> pd.DataFrame:

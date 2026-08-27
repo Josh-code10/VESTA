@@ -31,7 +31,10 @@ class RefreshDataResponse(BaseModel):
     status: str = "success"
     sync_status: SyncStatus
     last_synced_at: datetime
-    message: str = "Data refreshed and health metrics recalculated."
+    row_count: Optional[int] = None
+    column_count: Optional[int] = None
+    dataset_title: Optional[str] = None
+    message: str = "Dataset successfully re-synchronized and health metrics updated."
 
 class HealthDashboardResponse(BaseModel):
     workspace_id: str

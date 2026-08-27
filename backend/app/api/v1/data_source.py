@@ -31,12 +31,25 @@ def _has_html_columns(df: pd.DataFrame) -> bool:
             return True
     return False
 
-def _load_google_sheet_or_file(url_or_preset: Optional[str]) -> Tuple[pd.DataFrame, str]:
+def invalidate_sheet_cache(url: Optional[str] = None):
+    """Invalidates cached DataFrames for a specific URL or the entire sheet cache."""
+    if url:
+        _sheet_cache.pop(url.strip(), None)
+    else:
+        _sheet_cache.clear()
+
+def _load_google_sheet_or_file(
+    url_or_preset: Optional[str],
+    force_refresh: bool = False,
+    bypass_cache: bool = False
+) -> Tuple[pd.DataFrame, str]:
     if not url_or_preset or url_or_preset.strip() in ["", "demo", "default"]:
         return SessionDataManager.load_demo_fixture("ws_default"), "NexaSphere Omnichannel Dataset"
 
     url = url_or_preset.strip()
-    if url in _sheet_cache:
+    should_refresh = force_refresh or bypass_cache
+
+    if not should_refresh and url in _sheet_cache:
         cached_df, cached_title = _sheet_cache[url]
         if not _has_html_columns(cached_df):
             return cached_df, cached_title
@@ -110,6 +123,12 @@ def _load_google_sheet_or_file(url_or_preset: Optional[str]) -> Tuple[pd.DataFra
         except Exception:
             pass
 
+    # If bypass_cache was requested but network failed, fallback to cache if available
+    if url in _sheet_cache:
+        cached_df, cached_title = _sheet_cache[url]
+        if not _has_html_columns(cached_df):
+            return cached_df, cached_title
+
     # Safe Fallback to verified 5,000-row dataset fixture
     df = SessionDataManager.load_demo_fixture("ws_default")
     return df, "NexaSphere Omnichannel Dataset"
@@ -118,9 +137,10 @@ def _load_google_sheet_or_file(url_or_preset: Optional[str]) -> Tuple[pd.DataFra
 @router.post("/connect", response_model=ConnectSheetResponse)
 async def connect_data_source(req: ConnectSheetRequest):
     workspace_id = "ws_default"
+    raw_source = req.sheet_url or req.preset_id
 
     try:
-        df, title = _load_google_sheet_or_file(req.sheet_url or req.preset_id)
+        df, title = _load_google_sheet_or_file(raw_source, force_refresh=True)
     except Exception as e:
         print(f"Dataset load exception: {e}")
         df = SessionDataManager.load_demo_fixture(workspace_id)
@@ -131,6 +151,11 @@ async def connect_data_source(req: ConnectSheetRequest):
 
     SessionDataManager.set_dataframe(workspace_id, df)
     SessionDataManager.set_dictionary(workspace_id, data_dict)
+
+    if raw_source and raw_source.strip() not in ["", "demo", "default"]:
+        SessionDataManager.set_data_source(workspace_id, raw_source.strip())
+    else:
+        SessionDataManager.set_data_source(workspace_id, None)
 
     return ConnectSheetResponse(
         status="ready",
@@ -145,10 +170,24 @@ async def connect_data_source(req: ConnectSheetRequest):
 @router.post("/refresh", response_model=RefreshDataResponse)
 async def refresh_data_source():
     workspace_id = "ws_default"
-    df = SessionDataManager.get_dataframe(workspace_id)
+    source_url = SessionDataManager.get_data_source(workspace_id)
+
+    if source_url:
+        try:
+            df, title = _load_google_sheet_or_file(source_url, force_refresh=True)
+        except Exception as e:
+            print(f"Dataset re-fetch exception: {e}")
+            df = SessionDataManager.get_dataframe(workspace_id)
+            existing_dict = SessionDataManager.get_dictionary(workspace_id)
+            title = existing_dict.title if existing_dict else "Connected Google Sheet"
+    else:
+        df = SessionDataManager.get_dataframe(workspace_id)
+        existing_dict = SessionDataManager.get_dictionary(workspace_id)
+        title = existing_dict.title if existing_dict else "NexaSphere Omnichannel Dataset"
 
     # Recalculate profiling and data dictionary
-    data_dict = DataProfiler.profile_dataframe(df, title="NexaSphere Omnichannel Dataset")
+    data_dict = DataProfiler.profile_dataframe(df, title=title)
+    SessionDataManager.set_dataframe(workspace_id, df)
     SessionDataManager.set_dictionary(workspace_id, data_dict)
 
     now = datetime.utcnow()
@@ -156,6 +195,9 @@ async def refresh_data_source():
         status="success",
         sync_status=SyncStatus.READY,
         last_synced_at=now,
+        row_count=data_dict.row_count,
+        column_count=data_dict.column_count,
+        dataset_title=data_dict.title,
         message="Dataset successfully re-synchronized and health metrics updated."
     )
 
