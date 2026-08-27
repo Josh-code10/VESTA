@@ -1,0 +1,61 @@
+# =========================
+# SECRETS
+# =========================
+.env
+.env.*
+!.env.example
+
+# Google / Firebase credentials
+service-account.json
+credentials.json
+firebase-adminsdk-*.json
+
+# =========================
+# NODE
+# =========================
+node_modules/
+frontend/node_modules/
+
+# =========================
+# BUILD FILES
+# =========================
+dist/
+frontend/dist/
+build/
+
+# =========================
+# PYTHON
+# =========================
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+backend/.venv/
+
+# =========================
+# PYTHON CACHE / TESTS
+# =========================
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OPERATING SYSTEM
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# LOGS / TEMP FILES
+# =========================
+*.log
+*.tmp
+*.temp
