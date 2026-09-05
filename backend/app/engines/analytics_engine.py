@@ -40,7 +40,8 @@ class AnalyticsEngine:
         metrics: List[str],
         agg_functions: Optional[Dict[str, str]] = None,
         filters: Optional[Dict[str, Any]] = None,
-        sort_metric: Optional[str] = None
+        sort_metric: Optional[str] = None,
+        ascending: bool = False
     ) -> Dict[str, Any]:
         """
         Executes deterministic grouping and aggregation.
@@ -108,11 +109,12 @@ class AnalyticsEngine:
             else:
                 primary_sort = valid_metrics[0]
 
-        grouped = grouped.sort_values(by=primary_sort, ascending=False).reset_index(drop=True)
+        grouped = grouped.sort_values(by=primary_sort, ascending=ascending).reset_index(drop=True)
 
         records = grouped.to_dict(orient="records")
         agg_str_list = [f"{m}:{agg_map.get(m, 'sum')}" for m in valid_metrics]
-        formula = f"GROUP_BY({', '.join(valid_dims)}) -> AGG({', '.join(agg_str_list)}) -> SORT_DESC({primary_sort})"
+        sort_dir = "SORT_ASC" if ascending else "SORT_DESC"
+        formula = f"GROUP_BY({', '.join(valid_dims)}) -> AGG({', '.join(agg_str_list)}) -> {sort_dir}({primary_sort})"
 
         return {
             "result_id": f"res_{uuid.uuid4().hex[:8]}",
@@ -189,7 +191,9 @@ class AnalyticsEngine:
             "result_id": f"res_{uuid.uuid4().hex[:8]}",
             "success": True,
             "dimension": dimension,
+            "dimensions": [dimension],
             "metric": metric,
+            "metrics": [metric],
             "primary_sort_metric": sort_col,
             "records": records,
             "formula": formula
@@ -260,13 +264,15 @@ class AnalyticsEngine:
         Executes multi-driver comparison across every major business metric:
         Gross Revenue, Gross Profit, Gross Margin %, Return Rate %, Average Discount Depth %.
         """
-        filtered_df = cls.apply_filters(df, filters)
+        # Decouple target comparison dimension from filters so entity comparison is not collapsed to a single item
+        clean_filters = {k: v for k, v in (filters or {}).items() if k != dimension}
+        filtered_df = cls.apply_filters(df, clean_filters)
         dim_col = dimension if dimension in filtered_df.columns else "region"
-        if dim_col in filtered_df.columns and entities:
+        if dim_col in filtered_df.columns and entities and len(entities) >= 2:
             filtered_df = filtered_df[filtered_df[dim_col].isin(entities)]
 
         records = []
-        target_entities = entities if entities else (filtered_df[dim_col].dropna().unique() if dim_col in filtered_df.columns else [])
+        target_entities = entities if (entities and len(entities) >= 2) else (filtered_df[dim_col].dropna().unique() if dim_col in filtered_df.columns else [])
         for entity in target_entities:
             sub = filtered_df[filtered_df[dim_col] == entity]
             if sub.empty:
@@ -293,13 +299,18 @@ class AnalyticsEngine:
                 "discount_depth_pct": disc
             })
 
+        # Sort descending by gross revenue by default
+        records.sort(key=lambda r: r.get("gross_revenue", 0.0), reverse=True)
+
         return {
             "result_id": f"res_{uuid.uuid4().hex[:8]}",
             "success": True,
             "dimension": dim_col,
+            "dimensions": [dim_col],
             "metrics": ["gross_revenue", "gross_profit", "gross_margin_pct", "return_rate_pct", "discount_depth_pct"],
+            "primary_sort_metric": "gross_revenue",
             "records": records,
-            "formula": f"MULTI_DRIVER_COMPARISON({dim_col} IN {entities}) -> COMPUTE(Revenue, Profit, Margin%, ReturnRate%, Discount%)"
+            "formula": f"MULTI_DRIVER_COMPARISON({dim_col} IN {entities or 'ALL'}) -> COMPUTE(Revenue, Profit, Margin%, ReturnRate%, Discount%)"
         }
 
     @classmethod
@@ -474,7 +485,8 @@ class AnalyticsEngine:
         cls,
         pattern_id: str,
         df: pd.DataFrame,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
+        dimension: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Executes deterministic Pandas analytical operations for the specified pattern ID.
@@ -620,6 +632,15 @@ class AnalyticsEngine:
                     "records": grouped.to_dict(orient="records"),
                     "formula": f"ROAS = {rev_col} / {spend_col}"
                 }
+
+        elif pattern_id == "executive_dimension_comparison":
+            dim = dimension or cls._find_col(df, ["region", "store_region", "territory", "store_name", "sales_channel", "category", "product_name"]) or "region"
+            entities = []
+            if filters and dim in filters:
+                val = filters[dim]
+                if isinstance(val, list) and len(val) >= 2:
+                    entities = val
+            return cls.multi_driver_comparison(df, dimension=dim, entities=entities, filters=filters)
 
         # Fallback multi-driver aggregation using semantic dimension
         default_dim = cls._find_default_dimension(filtered_df)

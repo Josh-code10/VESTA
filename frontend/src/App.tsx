@@ -273,6 +273,7 @@ export const App: React.FC = () => {
 
               {/* Questions Your Business Is Asking */}
               <QuestionsBusinessIsAskingCard
+                questions={dashboard?.inferred_questions}
                 onSelectQuestion={(q) => handleStartInvestigation(q)}
               />
 

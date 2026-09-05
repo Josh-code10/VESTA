@@ -193,4 +193,5 @@ class ExecutiveIntelligence(BaseModel):
     business_drivers: List[ActiveKPI]
     available_categories: List[str]
     available_kpi_catalog: List[Dict[str, Any]]
+    inferred_questions: List[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)

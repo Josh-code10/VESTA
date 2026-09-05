@@ -239,29 +239,36 @@ class PatternRegistry:
             if matched_contract:
                 break
 
-        # Fallback keyword matching
+        # Fallback keyword matching with expanded semantic synonyms
         if not matched_contract:
-            if ("revenue" in q_lower or "sales" in q_lower) and ("margin" in q_lower or "profit" in q_lower) and any(w in q_lower for w in ["grow", "up", "increase", "rise", "increas", "high"]) and any(w in q_lower for w in ["shrink", "shirnk", "fall", "drop", "decline", "down", "low", "compress"]):
+            has_rev = any(w in q_lower for w in ["revenue", "sales", "turnover", "volume", "top line"])
+            has_margin = any(w in q_lower for w in ["margin", "profit", "earnings", "bottom line", "cogs", "losing money", "leaking cash"])
+            has_disc = any(w in q_lower for w in ["discount", "discounts", "markdown", "markdowns", "promo", "rebate", "concession"])
+            has_ret = any(w in q_lower for w in ["return", "returns", "sending back", "sent back", "refund", "bounced", "rejection", "returned"])
+            has_grow = any(w in q_lower for w in ["grow", "up", "increase", "rise", "increas", "high", "gain"])
+            has_shrink = any(w in q_lower for w in ["shrink", "shirnk", "fall", "drop", "decline", "down", "low", "compress", "erosion", "hurt", "sacrific", "eating into", "eat", "leak", "bleed", "ruin"])
+
+            if has_rev and has_margin and has_grow and has_shrink:
                 matched_contract = cls.PATTERNS["profitability_tradeoff"]
-            elif "profit" in q_lower and ("fall" in q_lower or "decline" in q_lower or "drop" in q_lower or "why" in q_lower or "shrink" in q_lower or "shirnk" in q_lower or "margin" in q_lower):
+            elif has_disc and (has_shrink or has_margin or "sale" in q_lower or "hurt" in q_lower or "eat" in q_lower or "help" in q_lower):
+                matched_contract = cls.PATTERNS["profitability_tradeoff"]
+            elif has_margin and (has_shrink or "why" in q_lower or "collapse" in q_lower or "variance" in q_lower):
                 matched_contract = cls.PATTERNS["profit_decline_driver"]
-            elif "discount" in q_lower and ("hurt" in q_lower or "help" in q_lower or "margin" in q_lower or "sale" in q_lower):
-                matched_contract = cls.PATTERNS["profitability_tradeoff"]
-            elif "return" in q_lower:
+            elif has_ret:
                 matched_contract = cls.PATTERNS["return_driver"]
-            elif "store" in q_lower and ("profit" in q_lower or "drive" in q_lower):
+            elif any(w in q_lower for w in ["store", "branch", "outlet", "shop"]) and (has_margin or "drive" in q_lower or "profit" in q_lower or "lead" in q_lower):
                 matched_contract = cls.PATTERNS["store_profitability"]
-            elif "campaign" in q_lower or "marketing" in q_lower or "roi" in q_lower:
+            elif "campaign" in q_lower or "marketing" in q_lower or "roi" in q_lower or "ad spend" in q_lower:
                 matched_contract = cls.PATTERNS["campaign_roi"]
-            elif "inventory" in q_lower or "stockout" in q_lower or "overstock" in q_lower:
+            elif "inventory" in q_lower or "stockout" in q_lower or "overstock" in q_lower or "stock level" in q_lower:
                 matched_contract = cls.PATTERNS["inventory_imbalance"]
-            elif "delivery" in q_lower or "shipping" in q_lower or "partner" in q_lower:
+            elif "delivery" in q_lower or "shipping" in q_lower or "partner" in q_lower or "carrier" in q_lower:
                 matched_contract = cls.PATTERNS["delivery_performance"]
-            elif "customer" in q_lower and ("valuable" in q_lower or "segment" in q_lower):
+            elif "customer" in q_lower and ("valuable" in q_lower or "segment" in q_lower or "tier" in q_lower):
                 matched_contract = cls.PATTERNS["customer_value_segmentation"]
-            elif "employee" in q_lower or "target" in q_lower or "quota" in q_lower:
+            elif "employee" in q_lower or "target" in q_lower or "quota" in q_lower or "sales rep" in q_lower:
                 matched_contract = cls.PATTERNS["employee_target_profitability"]
-            elif "compare" in q_lower or ("lagos" in q_lower and "abuja" in q_lower):
+            elif "compare" in q_lower or "versus" in q_lower or " vs " in q_lower or ("lagos" in q_lower and "abuja" in q_lower):
                 matched_contract = cls.PATTERNS["executive_dimension_comparison"]
 
         if not matched_contract:

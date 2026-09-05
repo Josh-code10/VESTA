@@ -220,6 +220,7 @@ export interface ExecutiveIntelligence {
     description: string;
     missing_fields: string[];
   }>;
+  inferred_questions?: string[];
 }
 
 export type MemoryStatus = 'Open' | 'Monitoring' | 'Improved' | 'Resolved' | 'Escalated';
@@ -268,6 +269,7 @@ export interface HealthDashboardResponse {
     description: string;
     missing_fields: string[];
   }>;
+  inferred_questions?: string[];
   executive_intelligence?: ExecutiveIntelligence;
 }
 

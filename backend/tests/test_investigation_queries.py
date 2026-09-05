@@ -69,3 +69,20 @@ def test_investigation_api_query_endpoint():
         data = res.json()
         assert "node" in data
         assert data["node"]["insight"]["headline"] != ""
+
+
+def test_dimension_unshackling_cross_region_comparison():
+    df = SessionDataManager.load_demo_fixture("ws_default")
+    orchestrator = GeminiOrchestrator()
+    node, ans, filts = orchestrator.process_investigation_turn(
+        df=df,
+        user_question="Compare Inverter Split AC 1.5HP (AC-902) performance across other regions",
+        active_filters={"region": "Port Harcourt"}
+    )
+    assert node is not None
+    records = node.evidence_data.get("records", [])
+    # Must unconstrain region and compare across multiple regions (not collapse to 1 segment)
+    assert len(records) >= 3, f"Expected >= 3 regions, got {len(records)}"
+    assert filts.get("product_name") == "Inverter Split AC 1.5HP (AC-902)"
+    assert "region" not in filts or isinstance(filts["region"], list)
+

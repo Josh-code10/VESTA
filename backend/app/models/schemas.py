@@ -50,6 +50,7 @@ class HealthDashboardResponse(BaseModel):
     kpis: List[ActiveKPI]
     available_categories: List[str] = Field(default_factory=list)
     available_kpi_catalog: List[Dict[str, Any]]
+    inferred_questions: List[str] = Field(default_factory=list)
     executive_intelligence: Optional[ExecutiveIntelligence] = None
 
 class UpdateKPIConfigRequest(BaseModel):

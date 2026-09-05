@@ -54,7 +54,10 @@ class HealthEngine:
         # 3. Storyline Synthesis (Strictly synchronized with health score & top issues)
         storyline = cls._synthesize_storyline(health_score_breakdown, top_3_issues, active_kpis)
 
-        # 4. Consolidated Executive Intelligence Object
+        # 4. Inferred Business Questions (Dynamically derived from dataset anomalies)
+        inferred_questions = cls.infer_business_questions(df, active_kpis, all_issues)
+
+        # 5. Consolidated Executive Intelligence Object
         executive_intel = ExecutiveIntelligence(
             health_score=health_score_breakdown,
             business_storyline=storyline,
@@ -62,7 +65,8 @@ class HealthEngine:
             view_more_issues=view_more_issues,
             business_drivers=active_kpis,
             available_categories=available_categories,
-            available_kpi_catalog=catalog
+            available_kpi_catalog=catalog,
+            inferred_questions=inferred_questions
         )
 
         return (
@@ -408,3 +412,133 @@ class HealthEngine:
             executive_narrative=exec_narrative,
             channel_highlights=channel_highlights
         )
+
+    @classmethod
+    def infer_business_questions(
+        cls,
+        df: Optional[pd.DataFrame],
+        active_kpis: Optional[List[ActiveKPI]] = None,
+        issues: Optional[List[HealthIssue]] = None
+    ) -> List[str]:
+        """
+        Dynamically infers priority business questions from dataset anomalies,
+        detected issue drivers, and commercial variances.
+        """
+        inferred: List[str] = []
+        if df is None or df.empty:
+            return [
+                "Why is revenue growing while margin is shrinking?",
+                "Which product categories have the highest return rate?",
+                "What is the average discount depth by channel?",
+                "Which stores are driving profitability, not just revenue?"
+            ]
+
+        cols = {str(c).lower().replace(" ", "_"): c for c in df.columns}
+
+        worst_margin_region = None
+        worst_margin_period = None
+        high_return_region = None
+        high_return_cat = None
+
+        reg_col = cols.get("region") or cols.get("store_region")
+        rev_col = cols.get("revenue") or cols.get("sales") or cols.get("gross_revenue")
+        profit_col = cols.get("gross_profit") or cols.get("profit")
+        return_col = cols.get("return_flag") or cols.get("returned") or cols.get("returns")
+        cat_col = cols.get("category") or cols.get("product_category")
+        channel_col = cols.get("sales_channel") or cols.get("channel")
+        date_col = cols.get("order_date") or cols.get("date")
+
+        # 1. Analyze regional profit margins
+        if reg_col and rev_col and profit_col:
+            try:
+                reg_grp = df.groupby(reg_col).agg({rev_col: "sum", profit_col: "sum"})
+                reg_grp["margin_pct"] = (reg_grp[profit_col] / reg_grp[rev_col]) * 100.0
+                lowest_reg = reg_grp["margin_pct"].idxmin()
+                lowest_margin = reg_grp["margin_pct"].min()
+                if lowest_margin < 28.0:
+                    worst_margin_region = str(lowest_reg)
+            except Exception:
+                pass
+
+        # Check if there's a specific month with a drop in that region
+        if worst_margin_region and date_col and reg_col and rev_col and profit_col:
+            try:
+                df_reg = df[df[reg_col].astype(str) == worst_margin_region].copy()
+                df_reg["dt"] = pd.to_datetime(df_reg[date_col], errors="coerce")
+                df_reg["month_name"] = df_reg["dt"].dt.strftime("%B")
+                m_grp = df_reg.groupby("month_name").agg({rev_col: "sum", profit_col: "sum"})
+                m_grp["margin_pct"] = (m_grp[profit_col] / m_grp[rev_col]) * 100.0
+                if not m_grp.empty:
+                    lowest_month = m_grp["margin_pct"].idxmin()
+                    if m_grp["margin_pct"].min() < 25.0:
+                        worst_margin_period = str(lowest_month)
+            except Exception:
+                pass
+
+        # 2. Check regional returns
+        if reg_col and return_col:
+            try:
+                ret_grp = df.groupby(reg_col)[return_col].mean()
+                highest_ret_reg = ret_grp.idxmax()
+                if ret_grp.max() > 0.04:
+                    high_return_region = str(highest_ret_reg)
+            except Exception:
+                pass
+
+        # 3. Check category returns
+        if cat_col and return_col:
+            try:
+                cat_ret = df.groupby(cat_col)[return_col].mean()
+                highest_ret_cat = cat_ret.idxmax()
+                if cat_ret.max() > 0.04:
+                    high_return_cat = str(highest_ret_cat)
+            except Exception:
+                pass
+
+        # Synthesize questions
+        # Q1: Margin trade-off / divergence
+        has_margin_drag = any(k.kpi_id == "gross_profit_margin" and k.metric_score < 75 for k in (active_kpis or []))
+        if has_margin_drag or (worst_margin_region is not None):
+            inferred.append("Why is revenue growing while margin is shrinking?")
+
+        # Q2: Specific regional / monthly margin collapse
+        if worst_margin_region:
+            if worst_margin_period:
+                inferred.append(f"Why did gross profit margin collapse in {worst_margin_region} in {worst_margin_period}?")
+            else:
+                inferred.append(f"Why did gross profit margin decline in {worst_margin_region}?")
+
+        # Q3: Product return drivers
+        if high_return_region:
+            inferred.append(f"Which products are driving returns in {high_return_region}?")
+        elif high_return_cat:
+            inferred.append(f"Which products are driving returns in {high_return_cat}?")
+        else:
+            inferred.append("Which product categories have the highest return rate?")
+
+        # Q4: Discount depth
+        if channel_col:
+            inferred.append("What is the average discount depth by channel?")
+        elif cat_col:
+            inferred.append("What is the average discount depth by category?")
+
+        # Q5: Store or category profitability
+        if cols.get("store_name") or cols.get("store"):
+            inferred.append("Which stores are driving profitability, not just revenue?")
+        elif cat_col and profit_col:
+            inferred.append("Which product categories account for most of our gross profit?")
+
+        # Fallback if less than 4
+        defaults = [
+            "Why is revenue growing while margin is shrinking?",
+            "Which products are driving returns in South South?",
+            "What is the average discount depth by channel?",
+            "Which stores are driving profitability, not just revenue?"
+        ]
+        for d in defaults:
+            if len(inferred) >= 4:
+                break
+            if d not in inferred:
+                inferred.append(d)
+
+        return inferred[:4]

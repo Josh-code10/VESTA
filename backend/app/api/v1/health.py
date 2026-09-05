@@ -48,6 +48,7 @@ async def get_health_dashboard():
         kpis=active_kpis,
         available_categories=available_categories,
         available_kpi_catalog=catalog,
+        inferred_questions=executive_intel.inferred_questions if executive_intel else [],
         executive_intelligence=executive_intel
     )
 

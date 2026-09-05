@@ -76,6 +76,49 @@ class GeminiOrchestrator:
         norm = str(col).strip().lower().replace(" ", "_")
         return self.HUMAN_LABELS.get(norm, col.replace("_", " ").title())
 
+    def _parse_intent_with_llm(self, question: str, columns: List[str]) -> Optional[Dict[str, Any]]:
+        """
+        Uses Gemini API (google.genai) to parse complex natural language executive questions.
+        Returns extracted intent, target metric, dimension, filters, and polarity.
+        """
+        if not self.api_key:
+            return None
+        try:
+            from google import genai
+            client = genai.Client(api_key=self.api_key)
+            prompt = (
+                f"You are a semantic query parser for an executive business intelligence system.\n"
+                f"Map this executive question to the available dataset columns.\n\n"
+                f"User question: \"{question}\"\n"
+                f"Available dataset columns: {columns}\n\n"
+                f"Respond strictly in JSON format without markdown code fences:\n"
+                f"{{\n"
+                f'  "intent": "INVESTIGATE",\n'
+                f'  "metric": "<exact column name or gross_margin_pct or return_rate>",\n'
+                f'  "dimension": "<exact column name from available columns or null>",\n'
+                f'  "polarity": "worst" or "best" or "neutral",\n'
+                f'  "filters": {{"<col>": "<value>"}},\n'
+                f'  "pattern_id": "<profitability_tradeoff|return_driver|profit_decline_driver|store_profitability|null>"\n'
+                f"}}"
+            )
+            resp = client.models.generate_content(
+                model=self.model_name or "gemini-1.5-flash",
+                contents=prompt
+            )
+            if resp and resp.text:
+                clean_text = resp.text.strip()
+                if clean_text.startswith("```json"):
+                    clean_text = clean_text[7:]
+                if clean_text.startswith("```"):
+                    clean_text = clean_text[3:]
+                if clean_text.endswith("```"):
+                    clean_text = clean_text[:-3]
+                data = json.loads(clean_text.strip())
+                return data
+        except Exception:
+            return None
+        return None
+
     def process_investigation_turn(
         self,
         df: pd.DataFrame,
@@ -392,7 +435,12 @@ class GeminiOrchestrator:
         # Step 2: Deterministic Analytics Routing & Robust Filter Extraction
         cols_map = {str(c).lower().replace(" ", "_"): c for c in df.columns}
 
-        # 2A. Robust Filter Extraction FIRST (Handles singular/plural, dashes, spaces, and multi-entity list comparison)
+        # Check optional LLM extraction for natural language guidance
+        llm_guidance = self._parse_intent_with_llm(user_question, df.columns.tolist())
+        if llm_guidance and isinstance(llm_guidance.get("filters"), dict):
+            current_filters.update(llm_guidance["filters"])
+
+        # 2A. Robust Filter Extraction (Handles singular/plural, dashes, spaces, and multi-entity list comparison)
         q_clean = q_lower.replace("-", " ").replace("&", "and")
         for col in df.columns:
             if not pd.api.types.is_numeric_dtype(df[col]) and not pd.api.types.is_datetime64_any_dtype(df[col]) and df[col].nunique() < 100:
@@ -410,33 +458,38 @@ class GeminiOrchestrator:
                 elif len(matched_vals) == 1:
                     current_filters[col] = matched_vals[0]
 
-        # 2B. Smart dimension priority based on query content
+        # 2B. Polarity Detection (Recognizing "worst", "losing money", "erosion", "underperforming")
+        is_bottom_or_worst = (llm_guidance.get("polarity") == "worst") if llm_guidance else any(
+            w in q_lower for w in ["worst", "lowest", "bottom", "least", "lagging", "underperforming", "losing money", "leaking", "bleed", "drop", "collapse", "decline", "ruin", "erosion", "loss", "unprofitable"]
+        )
+
+        # 2C. Smart dimension priority with expanded semantic synonyms
         dims_found = []
         possible_dims = ["region", "store_region", "category", "product_category", "store", "store_name", "channel", "sales_channel", "state", "city", "product", "product_name"]
         
         is_explicit_single_dim = False
-        if "by channel" in q_lower or "per channel" in q_lower or "across channels" in q_lower:
+        if any(w in q_lower for w in ["store location", "store locations", "by store", "per store", "across stores", "store", "stores", "branch", "branches", "outlet", "outlets", "shop", "shops"]):
+            possible_dims = ["store_name", "store"]
+            is_explicit_single_dim = True
+        elif any(w in q_lower for w in ["by product", "per product", "across products", "product", "products", "item", "items", "sku", "skus", "merchandise", "goods"]):
+            possible_dims = ["product_name", "product", "category"]
+            is_explicit_single_dim = True
+        elif any(w in q_lower for w in ["channel", "channels", "platform", "platforms", "online", "retail", "wholesale", "web", "offline", "by channel"]):
             possible_dims = ["sales_channel", "channel", "region", "category"]
             is_explicit_single_dim = True
-        elif "by category" in q_lower or "per category" in q_lower or "across categories" in q_lower:
+        elif any(w in q_lower for w in ["category", "categories", "department", "lines", "by category"]):
             possible_dims = ["category", "product_category", "product_name", "region"]
             is_explicit_single_dim = True
-        elif "by region" in q_lower or "per region" in q_lower or "across regions" in q_lower:
+        elif any(w in q_lower for w in ["region", "regions", "area", "areas", "territory", "territories", "zone", "zones", "state", "city", "geography", "by region"]):
             possible_dims = ["region", "store_region", "state", "category"]
             is_explicit_single_dim = True
-        if "store" in q_lower or "stores" in q_lower:
-            possible_dims = ["store_name", "store", "region"]
-            is_explicit_single_dim = True
-        elif any(p in q_lower for p in ["product", "products", "item", "items", "sku", "skus"]):
-            possible_dims = ["product_name", "product", "category", "product_category"]
-            is_explicit_single_dim = True
-        elif "delivery" in q_lower or "partner" in q_lower:
+        elif "delivery" in q_lower or "partner" in q_lower or "shipping" in q_lower:
             possible_dims = ["delivery_status", "sales_channel", "region"]
             is_explicit_single_dim = True
         elif "campaign" in q_lower or "marketing" in q_lower or "roi" in q_lower:
             possible_dims = ["sales_channel", "category", "region"]
             is_explicit_single_dim = True
-        elif "employee" in q_lower or "employees" in q_lower or "sales targets" in q_lower:
+        elif "employee" in q_lower or "employees" in q_lower or "sales targets" in q_lower or "rep" in q_lower or "quota" in q_lower:
             possible_dims = ["sales_channel", "store_name", "region"]
             is_explicit_single_dim = True
         elif "customer" in q_lower or "segment" in q_lower or "segments" in q_lower:
@@ -447,8 +500,11 @@ class GeminiOrchestrator:
             is_explicit_single_dim = True
         elif "inventory" in q_lower or "categories" in q_lower or "category" in q_lower:
             possible_dims = ["category", "product_name", "store_name", "region"]
-        elif "channel" in q_lower or "channels" in q_lower:
-            possible_dims = ["sales_channel", "channel", "region"]
+
+        if llm_guidance and llm_guidance.get("dimension") and str(llm_guidance["dimension"]).lower() in cols_map:
+            mapped_dim = cols_map[str(llm_guidance["dimension"]).lower()]
+            if mapped_dim not in dims_found:
+                dims_found.append(mapped_dim)
 
         for d_key in possible_dims:
             if d_key in cols_map and cols_map[d_key] not in dims_found:
@@ -460,47 +516,77 @@ class GeminiOrchestrator:
                 if fallback_d in cols_map:
                     dims_found.append(cols_map[fallback_d])
 
-        # 2C. Determine un-constrained or multi-entity comparison active dimensions
-        unfiltered_dims = [d for d in dims_found if d not in current_filters or isinstance(current_filters.get(d), list)]
-        if unfiltered_dims:
-            active_dims = unfiltered_dims
-        else:
-            # If all candidate dimensions are ALREADY constrained by current_filters,
-            # drill down into granular sub-dimensions (product_name, store_name, sales_channel)!
-            granular_candidates = ["product_name", "product", "store_name", "store", "sales_channel", "channel"]
-            next_granular = [cols_map[g] for g in granular_candidates if g in cols_map and cols_map[g] not in current_filters]
-            if next_granular:
-                active_dims = next_granular[:1]
+        # 2D. Dynamic Dimension Unshackling:
+        # If the user explicitly asks to break down or compare across a dimension (e.g. "across regions", "by store", "across other regions"),
+        # remove any prior filter on that dimension so the query doesn't collapse to 1 segment.
+        is_breakdown_intent = any(w in q_lower for w in ["across", "by ", "per ", "compare", "break down", "breakdown", "versus", " vs "])
+        if is_breakdown_intent and dims_found:
+            primary_dim = dims_found[0]
+            if primary_dim in current_filters:
+                current_filters.pop(primary_dim, None)
+            active_dims = [primary_dim]
+        elif is_explicit_single_dim and dims_found:
+            explicit_candidates = [d for d in dims_found if d in cols_map.values()]
+            if explicit_candidates:
+                primary_dim = explicit_candidates[0]
+                if primary_dim in current_filters:
+                    current_filters.pop(primary_dim, None)
+                active_dims = [primary_dim]
             else:
-                active_dims = dims_found
+                active_dims = dims_found[:1]
+        else:
+            unfiltered_dims = [d for d in dims_found if d not in current_filters or isinstance(current_filters.get(d), list)]
+            if unfiltered_dims:
+                active_dims = unfiltered_dims
+            else:
+                granular_candidates = ["product_name", "product", "store_name", "store", "sales_channel", "channel"]
+                next_granular = [cols_map[g] for g in granular_candidates if g in cols_map and cols_map[g] not in current_filters]
+                active_dims = next_granular[:1] if next_granular else dims_found
 
-        # Smart metric priority based on query content
+        # 2E. Smart metric priority with expanded semantic synonyms
+        has_discount_term = any(w in q_lower for w in ["discount", "discounts", "markdown", "markdowns", "promo", "promotional", "price cut", "rebate", "concession"])
+        has_return_term = any(w in q_lower for w in ["return", "returns", "sending back", "sent back", "refund", "refunds", "bounced", "rejection", "returned"])
+        has_profit_term = any(w in q_lower for w in ["profit", "margin", "margins", "earnings", "bottom line", "cogs", "cost", "losing money", "leaking cash", "bleeding", "unprofitable", "profitable", "gross profit", "loss"])
+        has_revenue_term = any(w in q_lower for w in ["revenue", "sales", "turnover", "top line", "cashflow", "receipts", "gross revenue", "selling"])
+        has_volume_term = any(w in q_lower for w in ["unit", "units", "quantity", "volume", "orders", "pieces", "sold"])
+
         metrics_found = []
-        if "discount" in q_lower:
+        if has_discount_term:
             possible_metrics = ["discount_rate", "discount", "discount_amount", "discount_depth", "revenue", "quantity"]
-        elif "return" in q_lower:
+        elif has_return_term:
             possible_metrics = ["return_flag", "quantity", "revenue", "gross_profit"]
-        elif "revenue" in q_lower or "sales" in q_lower:
-            possible_metrics = ["revenue", "sales_amount", "sales", "quantity", "gross_profit", "return_flag"]
-        elif "profit" in q_lower or "margin" in q_lower or "cogs" in q_lower or "cost" in q_lower:
+        elif has_profit_term:
             possible_metrics = ["gross_profit", "revenue", "cogs", "quantity", "return_flag"]
-        elif "unit" in q_lower or "quantity" in q_lower or "volume" in q_lower:
+        elif has_revenue_term:
+            possible_metrics = ["revenue", "sales_amount", "sales", "quantity", "gross_profit", "return_flag"]
+        elif has_volume_term:
             possible_metrics = ["quantity", "units", "revenue", "return_flag"]
         else:
             possible_metrics = ["revenue", "return_flag", "gross_profit", "quantity", "discount"]
+
+        if llm_guidance and llm_guidance.get("metric") and str(llm_guidance["metric"]).lower() in cols_map:
+            mapped_met = cols_map[str(llm_guidance["metric"]).lower()]
+            if mapped_met not in metrics_found:
+                metrics_found.append(mapped_met)
 
         for m_key in possible_metrics:
             if m_key in cols_map and cols_map[m_key] not in metrics_found:
                 metrics_found.append(cols_map[m_key])
 
-        # Determine target sort metric
+        # Determine target sort metric and sort polarity
         sort_metric = None
-        if "discount" in q_lower:
+        if has_discount_term:
             sort_metric = next((m for m in metrics_found if "discount" in m.lower()), "discount_rate")
-        elif "return" in q_lower and ("rate" in q_lower or "variance" in q_lower or "pct" in q_lower or "alert" in q_lower):
-            sort_metric = "return_rate"
-        elif ("margin" in q_lower or "profit" in q_lower) and ("rate" in q_lower or "pct" in q_lower or "variance" in q_lower):
-            sort_metric = "gross_margin_pct"
+        elif has_return_term:
+            sort_metric = "return_rate" if any(w in q_lower for w in ["rate", "variance", "pct", "alert", "worst", "highest", "most", "losses", "loss"]) else "return_flag"
+        elif has_profit_term:
+            sort_metric = "gross_margin_pct" if any(w in q_lower for w in ["margin", "rate", "pct", "worst", "lowest", "collapse", "decline", "shrink", "losing", "leaking", "bleed", "bottom"]) else "gross_profit"
+        elif has_revenue_term:
+            sort_metric = next((m for m in metrics_found if any(k in m.lower() for k in ["revenue", "sales"])), "revenue")
+
+        ascending_sort = False
+        if is_bottom_or_worst and has_profit_term:
+            ascending_sort = True
 
         # 2D. Pattern Registry Matching & Required Data Validation
         pattern_match = PatternRegistry.match_question(q_lower, available_columns=df.columns.tolist())
@@ -576,14 +662,20 @@ class GeminiOrchestrator:
 
         # Execute appropriate deterministic tool
         if pattern_match and pattern_match.status == "ANSWERABLE":
-            result = AnalyticsEngine.execute_pattern_analysis(pattern_match.pattern_id, df, filters=current_filters)
+            result = AnalyticsEngine.execute_pattern_analysis(
+                pattern_match.pattern_id,
+                df,
+                filters=current_filters,
+                dimension=active_dims[0] if active_dims else None
+            )
             chart_type = pattern_match.contract.primary_vis
         elif q_lower.startswith("compare") or "every major business driver" in q_lower or "across every" in q_lower:
             dim = active_dims[0] if active_dims else "region"
             entities = current_filters.get(dim, [])
             if not isinstance(entities, list):
                 entities = [entities] if entities else []
-            result = AnalyticsEngine.multi_driver_comparison(df, dimension=dim, entities=entities, filters=None)
+            clean_f = {k: v for k, v in current_filters.items() if k != dim}
+            result = AnalyticsEngine.multi_driver_comparison(df, dimension=dim, entities=entities, filters=clean_f)
             chart_type = "horizontal_bar"
         elif any(w in q_lower for w in ["account for most", "most of our", "pareto", "80/20", "80-20"]):
             product_col = next((cols_map[k] for k in ["product_name", "product", "sku"] if k in cols_map), None)
@@ -591,16 +683,28 @@ class GeminiOrchestrator:
             metric = sort_metric if (sort_metric and sort_metric in df.columns) else (metrics_found[0] if metrics_found else [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])][0])
             result = AnalyticsEngine.analyze_contribution(df, dimension=dim, metric=metric, filters=current_filters)
             chart_type = "contribution"
-        elif "rank" in q_lower or "top" in q_lower or "which" in q_lower:
+        elif any(w in q_lower for w in ["rank", "top", "which", "worst", "lowest", "highest", "best", "where", "who", "lead", "leading", "break down", "breakdown"]):
             dim = active_dims[0] if active_dims else (dims_found[0] if dims_found else df.columns[0])
             metric = sort_metric if (sort_metric and sort_metric in df.columns) else (metrics_found[0] if metrics_found else [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])][0])
-            result = AnalyticsEngine.rank_dimension(df, dimension=dim, metric=metric, filters=current_filters, limit=8)
+            result = AnalyticsEngine.rank_dimension(df, dimension=dim, metric=metric, ascending=ascending_sort, filters=current_filters, limit=8)
             chart_type = "horizontal_bar"
         else:
             dims = active_dims[:1] if is_explicit_single_dim else (active_dims[:2] if active_dims else [df.columns[0]])
             metrics = metrics_found[:2] if metrics_found else [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])][:1]
-            result = AnalyticsEngine.group_and_aggregate(df, dimensions=dims, metrics=metrics, filters=current_filters, sort_metric=sort_metric)
+            result = AnalyticsEngine.group_and_aggregate(df, dimensions=dims, metrics=metrics, filters=current_filters, sort_metric=sort_metric, ascending=ascending_sort)
             chart_type = "bar"
+
+        # Self-Healing Guardrail: If a comparison or ranking was asked across segments, but returned <=1 record
+        # due to conflicting inherited filters, relax the conflicting filter and re-run.
+        if len(result.get("records", [])) <= 1 and (q_lower.startswith("compare") or any(w in q_lower for w in ["across", "rank", "break down", "breakdown", "by "])):
+            dim = active_dims[0] if active_dims else "region"
+            relaxed_filters = {k: v for k, v in current_filters.items() if k != dim}
+            if relaxed_filters != current_filters or len(result.get("records", [])) <= 1:
+                retry_result = AnalyticsEngine.multi_driver_comparison(df, dimension=dim, entities=[], filters=relaxed_filters)
+                if len(retry_result.get("records", [])) > len(result.get("records", [])):
+                    result = retry_result
+                    current_filters = relaxed_filters
+                    chart_type = "horizontal_bar"
 
         # Construct Lineage Object
         lineage = LineageObject(
@@ -626,7 +730,8 @@ class GeminiOrchestrator:
             q_lower=q_lower,
             human_fields_map=human_fields_map,
             intent_type=intent.value if 'intent' in locals() else "INVESTIGATE",
-            concept=concept if 'concept' in locals() else None
+            concept=concept if 'concept' in locals() else None,
+            is_bottom_or_worst=is_bottom_or_worst
         )
 
         node = EvidenceNode(
@@ -654,7 +759,8 @@ class GeminiOrchestrator:
         q_lower: str,
         human_fields_map: Dict[str, str],
         intent_type: str = "INVESTIGATE",
-        concept: Optional[KnowledgeConcept] = None
+        concept: Optional[KnowledgeConcept] = None,
+        is_bottom_or_worst: bool = False
     ) -> StructuredExecutiveInsight:
         records = result.get("records", [])
         if not records:
@@ -794,21 +900,37 @@ class GeminiOrchestrator:
                 status=status
             )
             why_it_matters = f"Disproportionate return concentration in {top_name} creates reverse-logistics friction and customer churn exposure."
-        elif "profit" in q_lower or "margin" in q_lower:
-            headline = f"{top_name} leads gross profitability{scope_text} ({val_formatted})"
-            status = "positive"
-            executive_summary = (
-                f"{top_name} recorded {val_formatted} {primary_metric_label}{context_detail}{scope_text}, "
-                f"ranking #1 across {len(records)} segments analyzed."
-            )
-            metric_highlight = MetricHighlight(
-                label=f"Leading {primary_metric_label}",
-                value=val_formatted,
-                sublabel=f"{top_name}{scope_text}",
-                benchmark=f"{len(records)} segments analyzed",
-                status=status
-            )
-            why_it_matters = f"Unit margin resilience in {top_name} provides critical downside protection for enterprise bottom-line delivery."
+        elif "profit" in q_lower or "margin" in q_lower or any(w in q_lower for w in ["loss", "losing", "leak", "bleed", "unprofitable"]):
+            if is_bottom_or_worst:
+                headline = f"{top_name} records the lowest gross margin{scope_text} ({val_formatted})"
+                status = "warning"
+                executive_summary = (
+                    f"{top_name} recorded {val_formatted} {primary_metric_label}{context_detail}{scope_text}, "
+                    f"representing the lowest margin realization across {len(records)} segments analyzed and creating profitability drag."
+                )
+                metric_highlight = MetricHighlight(
+                    label=f"Lowest {primary_metric_label}",
+                    value=val_formatted,
+                    sublabel=f"{top_name}{scope_text}",
+                    benchmark=f"{len(records)} segments analyzed",
+                    status=status
+                )
+                why_it_matters = f"Sub-target gross margin in {top_name} erodes enterprise EBITDA and limits operational cash generation."
+            else:
+                headline = f"{top_name} leads gross profitability{scope_text} ({val_formatted})"
+                status = "positive"
+                executive_summary = (
+                    f"{top_name} recorded {val_formatted} {primary_metric_label}{context_detail}{scope_text}, "
+                    f"ranking #1 across {len(records)} segments analyzed."
+                )
+                metric_highlight = MetricHighlight(
+                    label=f"Leading {primary_metric_label}",
+                    value=val_formatted,
+                    sublabel=f"{top_name}{scope_text}",
+                    benchmark=f"{len(records)} segments analyzed",
+                    status=status
+                )
+                why_it_matters = f"Unit margin resilience in {top_name} provides critical downside protection for enterprise bottom-line delivery."
         elif "revenue" in q_lower or "sales" in q_lower:
             headline = f"{top_name} represents the primary revenue driver{scope_text}"
             status = "positive"

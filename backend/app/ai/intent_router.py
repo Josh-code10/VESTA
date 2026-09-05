@@ -31,7 +31,10 @@ class IntentRouter:
         dashboard_keywords = [
             "business health", "health score", "health status", "why is health", "how is health",
             "why is return rate red", "why is margin yellow", "why is revenue green",
-            "explain this score", "dashboard methodology", "why is profit yellow", "why is margin red"
+            "explain this score", "explain the score", "explain the health score", "what does the score mean",
+            "dashboard methodology", "why is profit yellow", "why is margin red",
+            "how are we doing", "how is my business", "how is the business", "overall business health",
+            "why are we at risk"
         ]
         if any(kw in q_lower for kw in dashboard_keywords):
             return {
@@ -58,10 +61,12 @@ class IntentRouter:
 
         live_data_keywords = [
             "which", "compare", "lagos", "abuja", "kano", "ibadan", "port harcourt", "south", "north",
-            "top", "worst", "best", "store", "product", "channel", "category", "in july", "in june",
+            "top", "worst", "best", "lowest", "highest", "store", "product", "channel", "category", "in july", "in june",
             "why did", "why is", "why has", "what caused", "decline", "drop", "fall", "increase",
             "growth", "collapse", "variance", "second half", "first half", "h1", "h2", "q1", "q2", "q3", "q4",
-            "despite", "versus", "compared", "year", "month", "quarter"
+            "despite", "versus", "compared", "year", "month", "quarter",
+            "losing money", "leaking cash", "bleeding", "markdown", "markdowns", "sending back", "sent back",
+            "area", "territory", "outlet", "branch", "where", "who", "eating into", "sacrificing"
         ]
         has_live_data_intent = has_location_or_dimension or any(kw in q_lower for kw in live_data_keywords)
 
