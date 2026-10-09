@@ -47,9 +47,9 @@ export interface ActiveKPI {
   name: string;
   category: string;
   current_value: number;
-  previous_value?: number;
-  target_value?: number;
-  variance_pct?: number;
+  previous_value?: number | null;
+  target_value?: number | null;
+  variance_pct?: number | null;
   metric_score: number;
   weight_pct: number;
   points_contributed: number;
@@ -103,7 +103,7 @@ export interface HealthIssue {
   ranking_reason: string;
   financial_impact_label: string;
   current_value: number;
-  baseline_target?: number;
+  baseline_target?: number | null;
   variance_pct: number;
   primary_driver: string;
   detected_at: string;
@@ -221,6 +221,7 @@ export interface ExecutiveIntelligence {
     missing_fields: string[];
   }>;
   inferred_questions?: string[];
+  created_at?: string;
 }
 
 export type MemoryStatus = 'Open' | 'Monitoring' | 'Improved' | 'Resolved' | 'Escalated';

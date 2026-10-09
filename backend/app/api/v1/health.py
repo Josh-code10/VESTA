@@ -30,7 +30,12 @@ async def get_health_dashboard():
     )
 
     data_dict = SessionDataManager.get_dictionary(workspace_id)
-    title = data_dict.title if data_dict else "Connected Business Dataset"
+    if not data_dict and df is not None:
+        from app.engines.profiler import DataProfiler
+        data_dict = DataProfiler.profile_dataframe(df, title="NexaSphere Enterprise Dataset")
+        SessionDataManager.set_dictionary(workspace_id, data_dict)
+
+    title = data_dict.title if data_dict else "NexaSphere Enterprise Dataset"
     row_count = data_dict.row_count if data_dict else (len(df) if df is not None else 0)
     column_count = data_dict.column_count if data_dict else (len(df.columns) if df is not None else 0)
 

@@ -29,9 +29,9 @@ export const KPICustomizerModal: React.FC<KPICustomizerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleStartEdit = (kpiId: string, currentTarget?: number) => {
+  const handleStartEdit = (kpiId: string, currentTarget?: number | null) => {
     setEditingTargetId(kpiId);
-    setTargetInput(currentTarget ? String(currentTarget) : '');
+    setTargetInput(currentTarget != null ? String(currentTarget) : '');
   };
 
   const handleSave = (kpiId: string) => {

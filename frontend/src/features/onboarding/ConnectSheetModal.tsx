@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Database, Sparkles, CheckCircle2, ArrowRight, Shield } from 'lucide-react';
-import { connectSheet } from '../../services/api';
+import { connectSheet, PERMANENT_MASTER_SHEET_URL } from '../../services/api';
 
 interface ConnectSheetModalProps {
   isOpen: boolean;
@@ -90,10 +90,10 @@ export const ConnectSheetModal: React.FC<ConnectSheetModalProps> = ({
           marginBottom: '18px'
         }}>
           <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-            1-Click Live Demonstration Preset
+            NexaSphere Master Enterprise Dataset (Default)
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4' }}>
-            Connect NexaSphere Retail Ltd. omnichannel dataset (5,000 transactions, retail, web, regional margin & return variances).
+            Permanent enterprise dataset (30,443 verified transactions across 14 tables: sales, returns, logistics, stores, products, customers).
           </div>
           <button
             onClick={() => handleConnect()}
@@ -115,7 +115,7 @@ export const ConnectSheetModal: React.FC<ConnectSheetModalProps> = ({
             }}
           >
             <Sparkles size={14} />
-            <span>{isConnecting ? 'Profiling Dataset...' : 'Connect Live Demo Dataset'}</span>
+            <span>{isConnecting ? 'Profiling Dataset...' : 'Restore Default Enterprise Dataset (30,443 Rows)'}</span>
           </button>
         </div>
 
@@ -125,9 +125,25 @@ export const ConnectSheetModal: React.FC<ConnectSheetModalProps> = ({
 
         {/* Custom URL Input */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-            Google Sheet URL (Public or Shared)
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Google Sheet URL (Public or Shared)
+            </label>
+            <button
+              type="button"
+              onClick={() => setSheetUrl(PERMANENT_MASTER_SHEET_URL)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--brand-primary)',
+                fontSize: '11px',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              Paste Master Sheet Link
+            </button>
+          </div>
           <input
             type="text"
             value={sheetUrl}

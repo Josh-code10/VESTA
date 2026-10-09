@@ -43,8 +43,8 @@ def _load_google_sheet_or_file(
     force_refresh: bool = False,
     bypass_cache: bool = False
 ) -> Tuple[pd.DataFrame, str]:
-    if not url_or_preset or url_or_preset.strip() in ["", "demo", "default"]:
-        return SessionDataManager.load_demo_fixture("ws_default"), "NexaSphere Omnichannel Dataset"
+    if not url_or_preset or url_or_preset.strip() in ["", "demo", "default"] or "1F5fwt0yWOnm-9IxN6hhDBSl6M3ubOt86" in str(url_or_preset):
+        return SessionDataManager.load_demo_fixture("ws_default"), "NexaSphere Enterprise Dataset"
 
     url = url_or_preset.strip()
     should_refresh = force_refresh or bypass_cache

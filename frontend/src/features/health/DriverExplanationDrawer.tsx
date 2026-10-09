@@ -127,7 +127,7 @@ export const DriverExplanationDrawer: React.FC<DriverExplanationDrawerProps> = (
                 Target Benchmark
               </div>
               <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }} className="tabular-nums">
-                {effectiveDetails.target_value !== undefined ? effectiveDetails.target_value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'Enterprise Target'}
+                {effectiveDetails.target_value != null ? effectiveDetails.target_value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'Enterprise Target'}
               </div>
             </div>
           </div>

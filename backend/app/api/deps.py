@@ -28,7 +28,9 @@ class SessionDataManager:
 
     @classmethod
     def load_demo_fixture(cls, workspace_id: str = "ws_default") -> pd.DataFrame:
-        fixture_path = os.path.join(os.path.dirname(__file__), "..", "data", "demo_fixture.csv")
+        fixture_path = os.path.join(os.path.dirname(__file__), "..", "data", "enterprise_dataset.csv")
+        if not os.path.exists(fixture_path):
+            fixture_path = os.path.join(os.path.dirname(__file__), "..", "data", "demo_fixture.csv")
         if os.path.exists(fixture_path):
             df = pd.read_csv(fixture_path)
         else:

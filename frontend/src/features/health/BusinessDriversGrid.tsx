@@ -234,7 +234,7 @@ export const BusinessDriversGrid: React.FC<BusinessDriversGridProps> = ({
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                        {kpi.variance_pct !== undefined && (
+                        {kpi.variance_pct != null && (
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',

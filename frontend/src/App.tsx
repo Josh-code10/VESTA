@@ -20,6 +20,7 @@ import { SinceLastBriefingBanner } from './features/health/SinceLastBriefingBann
 import { voiceService } from './services/ExecutiveVoiceService';
 import { InvestigationWorkspace } from './features/investigate/InvestigationWorkspace';
 import { getHealthDashboard, refreshDataSource, updateKPIConfig, API_BASE_URL } from './services/api';
+import { DEFAULT_DASHBOARD_SNAPSHOT } from './data/defaultDashboardSnapshot';
 import type { HealthDashboardResponse, ActiveKPI, HealthIssue, EvidenceNode, ExecutiveMemory } from './types/api';
 
 export const App: React.FC = () => {
@@ -28,8 +29,8 @@ export const App: React.FC = () => {
     return (localStorage.getItem('vesta-theme') as 'light' | 'dark') || 'light';
   });
 
-  const [dashboard, setDashboard] = useState<HealthDashboardResponse | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [dashboard, setDashboard] = useState<HealthDashboardResponse | null>(DEFAULT_DASHBOARD_SNAPSHOT);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [activeView, setActiveView] = useState<'health' | 'investigate'>('health');
   const [investigationSeedQuery, setInvestigationSeedQuery] = useState<string>('');
@@ -180,8 +181,8 @@ export const App: React.FC = () => {
     }}>
       {/* Executive Header */}
       <ExecutiveHeader
-        datasetTitle={dashboard?.dataset_title || 'Connected Business Dataset'}
-        rowCount={dashboard?.row_count ?? 0}
+        datasetTitle={dashboard?.dataset_title || 'NexaSphere Enterprise Dataset'}
+        rowCount={dashboard?.row_count ?? 30443}
         lastSyncedAt={dashboard?.last_synced_at || new Date().toISOString()}
         syncStatus={dashboard?.sync_status || 'READY'}
         isRefreshing={isRefreshing}
